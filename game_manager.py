@@ -23,12 +23,14 @@ class Barrel:
         self.y = y
         self.width = 20
         self.height = 20
-        self.speed_x = random.choice([-2, 2])
+        self.speed_x = random.choice([-2, 2])  # Dirección inicial aleatoria
         self.speed_y = 0
         self.gravity = 0.5
         self.on_platform = False
         self.animation_frame = 0
         self.animation_timer = 0
+        self.last_platform_y = y  # Para detectar cuando cae un nivel
+        self.fall_threshold = 50   # Mínima altura de caída para cambiar dirección
 
     def update(self, platforms):
         """Actualiza el movimiento del barril"""
@@ -43,17 +45,29 @@ class Barrel:
         
         # Verificar colisiones con plataformas
         barrel_rect = pygame.Rect(self.x, self.y, self.width, self.height)
+        previous_on_platform = self.on_platform
         self.on_platform = False
         
         for platform in platforms:
             if barrel_rect.colliderect(platform):
                 if self.speed_y > 0:  # Cayendo
+                    # Calcular cuánto ha caído desde la última plataforma
+                    fall_distance = self.y - self.last_platform_y
+                    
                     self.y = platform.top - self.height
                     self.speed_y = 0
                     self.on_platform = True
-                    # Cambiar dirección ocasionalmente
-                    if random.random() < 0.1:
-                        self.speed_x *= -1
+                    
+                    # Si ha caído al menos el threshold, cambiar dirección aleatoriamente
+                    if fall_distance >= self.fall_threshold:
+                        self.speed_x = random.choice([-2, 2])
+                        self.last_platform_y = self.y  # Actualizar última posición de plataforma
+                    
+                    break
+        
+        # Si estaba en una plataforma y ahora no, actualizar la posición de referencia
+        if previous_on_platform and not self.on_platform:
+            self.last_platform_y = self.y
         
         # Animación
         self.animation_timer += 1
