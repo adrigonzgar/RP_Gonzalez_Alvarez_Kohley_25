@@ -37,7 +37,7 @@ def welcome_screen(screen, clock):
             if event.type == pygame.KEYDOWN:  # cualquier tecla
                 waiting = False
 
-def main():
+def initialize_screen():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Donkey Kong - Mini Game")
@@ -60,4 +60,4 @@ def main():
     pygame.quit()
 
 if __name__ == "__main__":
-    main()
+    initialize_screen()
