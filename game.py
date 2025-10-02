@@ -4,6 +4,7 @@ import time
 from Welcome_Screen import welcome_screen, SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, WHITE, RED, YELLOW
 from player import Player
 from game_manager import GameManager
+from game_over import show_game_over_screen
 
 # Colores adicionales que necesitamos
 GREEN = (0, 255, 0)
@@ -34,6 +35,30 @@ def main_game_loop(screen, clock):
         
         # Actualizar lógica del juego
         game_manager.update(player)
+        
+        # Verificar Game Over
+        if player.lives <= 0:
+            # Calcular tiempo total jugado
+            total_time = time.time() - game_start_time
+            
+            # Obtener estadísticas
+            player_stats = player.get_stats()
+            game_manager_stats = {
+                'score': game_manager.get_score(),
+                'level': game_manager.level,
+                'barrels_dodged': getattr(game_manager, 'barrels_dodged', 0),
+                'powerups_collected': getattr(game_manager, 'powerups_collected', 0)
+            }
+            
+            # Mostrar pantalla de Game Over
+            choice = show_game_over_screen(screen, clock, player_stats, game_manager_stats, total_time)
+            
+            if choice == 0:  # Regresar al inicio
+                return  # Salir del loop para volver al menú principal
+            elif choice == 2:  # Salir del juego
+                pygame.quit()
+                sys.exit()
+            # Si choice == 1 (estadísticas), ya se manejó en la función
         
         # Dibujar todo
         screen.fill(BLACK)
@@ -99,14 +124,16 @@ def main():
     pygame.display.set_caption("Donkey Kong")
     clock = pygame.time.Clock()
     
-    # Mostrar pantalla de bienvenida primero
-    welcome_screen(screen, clock)
-    
-    # Luego iniciar el juego principal
-    main_game_loop(screen, clock)
-    
-    pygame.quit()
-    sys.exit()
+    # Loop principal del programa
+    while True:
+        # Mostrar pantalla de bienvenida
+        welcome_screen(screen, clock)
+        
+        # Iniciar el juego principal
+        main_game_loop(screen, clock)
+        
+        # Si llegamos aquí, el jugador eligió "Regresar al inicio"
+        # El loop continuará y volverá a mostrar la pantalla de bienvenida
 
 if __name__ == "__main__":
     main()

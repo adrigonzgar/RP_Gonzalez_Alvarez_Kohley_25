@@ -173,6 +173,10 @@ class GameManager:
         self.level = 1
         self.score = 0
         
+        # Estadísticas adicionales
+        self.barrels_dodged = 0
+        self.powerups_collected = 0
+        
         # Sistema de sonido
         self.sounds_enabled = False
         self.sounds = {}
@@ -281,6 +285,7 @@ class GameManager:
             # Eliminar barriles que salen de pantalla
             if barrel.y > self.screen_height or barrel.x < -50 or barrel.x > self.screen_width + 50:
                 self.barrels.remove(barrel)
+                self.barrels_dodged += 1  # Contar como barril esquivado
 
         # Actualizar power-ups
         for power_up in self.power_ups:
@@ -307,6 +312,7 @@ class GameManager:
         for power_up in self.power_ups:
             if not power_up.collected and player_rect.colliderect(power_up.get_rect()):
                 power_up.collected = True
+                self.powerups_collected += 1
                 self.play_sound('powerup')
                 
                 if power_up.type == "hammer":
