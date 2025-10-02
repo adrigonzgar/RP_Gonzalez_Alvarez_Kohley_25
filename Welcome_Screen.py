@@ -23,6 +23,7 @@ CYAN = (0, 255, 255)
 # Variables globales para efectos
 start_time = time.time()
 
+
 def load_background_image():
     """Carga la imagen de fondo del Donkey Kong"""
     try:
@@ -234,49 +235,17 @@ def welcome_screen(screen, clock):
                 pygame.time.wait(100)  # Breve pausa para el efecto
                 waiting = False
 
-def initialize_screen():
-    pygame.init()
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Donkey Kong - Enhanced Edition")
-    clock = pygame.time.Clock()
-
-    # Pantalla de bienvenida mejorada con tu imagen
+def show_welcome_screen(screen, clock):
+    """Función de librería para mostrar la pantalla de bienvenida"""
     welcome_screen(screen, clock)
 
-    # Aquí empieza el juego principal
-    running = True
-    game_start_time = time.time()
+# Solo ejecutar si se llama directamente (para testing)
+if __name__ == "__main__":
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Donkey Kong - Welcome Screen Test")
+    clock = pygame.time.Clock()
     
-    while running:
-        screen.fill(BLACK)
-        
-        # Texto temporal para el juego con efectos
-        font_large = pygame.font.Font(None, 48)
-        font_small = pygame.font.Font(None, 32)
-        
-        game_text = font_large.render("GAME STARTS HERE", True, WHITE)
-        screen.blit(game_text, (SCREEN_WIDTH//2 - game_text.get_width()//2, SCREEN_HEIGHT//2 - 50))
-        
-        # Instrucciones temporales
-        instruction_text = font_small.render("Press ESC to exit", True, YELLOW)
-        screen.blit(instruction_text, (SCREEN_WIDTH//2 - instruction_text.get_width()//2, SCREEN_HEIGHT//2 + 20))
-        
-        # Tiempo transcurrido
-        elapsed = time.time() - game_start_time
-        time_text = font_small.render(f"Time: {elapsed:.1f}s", True, GREEN)
-        screen.blit(time_text, (20, 20))
-        
-        pygame.display.flip()
-        clock.tick(FPS)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-
+    show_welcome_screen(screen, clock)
     pygame.quit()
 
-if __name__ == "__main__":
-    initialize_screen()
