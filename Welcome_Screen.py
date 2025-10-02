@@ -181,6 +181,7 @@ def welcome_screen(screen, clock):
     waiting = True
     frame_count = 0
     screen_start_time = time.time()
+    demo_timeout = 30.0  # 30 segundos para iniciar demo
     
     while waiting:
         frame_count += 1
@@ -210,6 +211,18 @@ def welcome_screen(screen, clock):
         draw_noise_effect(screen, frame_count, 5)  # Ruido sutil
         draw_overlay_texts(screen, frame_count)
         
+        # Mostrar countdown para demo en los últimos 5 segundos
+        if elapsed_time > demo_timeout - 5.0:
+            seconds_left = int(demo_timeout - elapsed_time) + 1
+            if seconds_left > 0:
+                font_demo = pygame.font.Font(None, 48)
+                demo_text = font_demo.render(f"DEMO EN {seconds_left}...", True, YELLOW)
+                demo_x = SCREEN_WIDTH // 2 - demo_text.get_width() // 2
+                
+                # Efecto de parpadeo para el countdown
+                if (frame_count // 15) % 2 == 0:
+                    screen.blit(demo_text, (demo_x, SCREEN_HEIGHT - 200))
+        
         # Efecto de parpadeo sutil de toda la pantalla (muy ocasional)
         if frame_count % 300 == 0:  # Cada 5 segundos aproximadamente
             flash_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -219,6 +232,10 @@ def welcome_screen(screen, clock):
 
         pygame.display.flip()
         clock.tick(FPS)
+        
+        # Verificar si es hora de iniciar la demo
+        if elapsed_time >= demo_timeout:
+            return "demo"  # Señal para iniciar demo automática
 
         # Eventos mejorados
         for event in pygame.event.get():
@@ -233,7 +250,9 @@ def welcome_screen(screen, clock):
                 screen.blit(flash_surface, (0, 0))
                 pygame.display.flip()
                 pygame.time.wait(100)  # Breve pausa para el efecto
-                waiting = False
+                return "play"  # Señal para juego normal
+    
+    return "play"  # Por defecto
 
 def show_welcome_screen(screen, clock):
     """Función de librería para mostrar la pantalla de bienvenida"""

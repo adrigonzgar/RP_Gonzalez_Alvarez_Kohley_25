@@ -3,7 +3,7 @@ import sys
 import time
 from Welcome_Screen import welcome_screen, SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, WHITE, RED, YELLOW
 from player import Player
-from game_manager import GameManager
+from game_manager import GameManager, DemoPlayer
 from game_over import show_game_over_screen
 
 # Colores adicionales que necesitamos
@@ -117,6 +117,95 @@ def main_game_loop(screen, clock):
                     # Salto adicional con barra espaciadora
                     player.jump()
 
+def demo_game_loop(screen, clock):
+    """Loop del juego en modo demo (automático)"""
+    # Crear el jugador (Mario)
+    player = Player(100, SCREEN_HEIGHT - 200, SCREEN_WIDTH, SCREEN_HEIGHT)
+    
+    # Crear el gestor del juego
+    game_manager = GameManager(SCREEN_WIDTH, SCREEN_HEIGHT)
+    
+    # Crear el jugador automático para la demo
+    demo_player = DemoPlayer(player, game_manager.get_platforms(), game_manager.get_ladders(), game_manager)
+    
+    # Variables del juego
+    dt = clock.get_time() / 1000.0
+    demo_duration = 60.0  # 60 segundos de demo
+    demo_start_time = time.time()
+    
+    while True:
+        dt = clock.get_time() / 1000.0
+        elapsed_demo_time = time.time() - demo_start_time
+        
+        # Terminar demo después del tiempo límite
+        if elapsed_demo_time >= demo_duration:
+            return
+        
+        # Obtener input automático de la demo
+        demo_keys = demo_player.update()
+        
+        # Actualizar jugador con input automático
+        player.update(demo_keys, game_manager.get_platforms(), game_manager.get_ladders(), dt)
+        
+        # Actualizar lógica del juego
+        game_manager.update(player)
+        
+        # Si el jugador muere en demo, reiniciar
+        if player.lives <= 0:
+            player = Player(100, SCREEN_HEIGHT - 200, SCREEN_WIDTH, SCREEN_HEIGHT)
+            game_manager = GameManager(SCREEN_WIDTH, SCREEN_HEIGHT)
+            demo_player = DemoPlayer(player, game_manager.get_platforms(), game_manager.get_ladders(), game_manager)
+        
+        # Dibujar todo
+        screen.fill(BLACK)
+        
+        # Dibujar el mapa y todos sus elementos
+        game_manager.draw(screen)
+        
+        # Dibujar jugador
+        player.draw(screen)
+        
+        # UI de la demo
+        font_large = pygame.font.Font(None, 48)
+        font_small = pygame.font.Font(None, 32)
+        font_tiny = pygame.font.Font(None, 24)
+        
+        # Indicador de DEMO
+        demo_text = font_large.render("DEMO", True, RED)
+        screen.blit(demo_text, (20, 20))
+        
+        # Estadísticas básicas
+        stats = player.get_stats()
+        total_score = stats['score'] + game_manager.get_score()
+        
+        score_text = font_small.render(f"Score: {total_score}", True, WHITE)
+        lives_text = font_small.render(f"Lives: {stats['lives']}", True, WHITE)
+        level_text = font_small.render(f"Level: {game_manager.level}", True, WHITE)
+        
+        screen.blit(score_text, (20, 60))
+        screen.blit(lives_text, (20, 90))
+        screen.blit(level_text, (20, 120))
+        
+        # Tiempo restante de demo
+        time_left = demo_duration - elapsed_demo_time
+        time_text = font_tiny.render(f"Demo termina en: {time_left:.1f}s", True, YELLOW)
+        screen.blit(time_text, (SCREEN_WIDTH - 250, 20))
+        
+        # Instrucción para salir
+        exit_text = font_tiny.render("Presiona cualquier tecla para jugar", True, GREEN)
+        screen.blit(exit_text, (SCREEN_WIDTH//2 - exit_text.get_width()//2, SCREEN_HEIGHT - 30))
+        
+        pygame.display.flip()
+        clock.tick(FPS)
+
+        # Eventos - cualquier tecla termina la demo
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                return  # Terminar demo y volver al menú
+
 def main():
     """Función principal del programa"""
     pygame.init()
@@ -127,13 +216,16 @@ def main():
     # Loop principal del programa
     while True:
         # Mostrar pantalla de bienvenida
-        welcome_screen(screen, clock)
+        mode = welcome_screen(screen, clock)
         
-        # Iniciar el juego principal
-        main_game_loop(screen, clock)
+        if mode == "demo":
+            # Iniciar modo demo
+            demo_game_loop(screen, clock)
+        else:
+            # Iniciar el juego principal
+            main_game_loop(screen, clock)
         
-        # Si llegamos aquí, el jugador eligió "Regresar al inicio"
-        # El loop continuará y volverá a mostrar la pantalla de bienvenida
+        # Si llegamos aquí, volver a la pantalla de bienvenida
 
 if __name__ == "__main__":
     main()
