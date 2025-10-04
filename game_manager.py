@@ -173,6 +173,13 @@ class GameManager:
         self.level = 1
         self.score = 0
         
+        # Sistema de spawn de power-ups aleatorios
+        self.hammer_spawn_timer = 0
+        self.hammer_spawn_rate = 600  # Frames entre spawns de martillos (10 segundos a 60 FPS)
+        self.bonus_spawn_timer = 0
+        self.bonus_spawn_rate = 900   # Frames entre spawns de bonus (15 segundos a 60 FPS)
+        self.max_random_powerups = 3  # Máximo número de power-ups aleatorios en pantalla
+        
         # Estadísticas adicionales
         self.barrels_dodged = 0
         self.powerups_collected = 0
@@ -339,6 +346,29 @@ def spawn_barrel(self):
     barrel = Barrel(spawn_x, spawn_y)
     self.barrels.append(barrel)
 
+def spawn_random_powerup(self, powerup_type):
+    """Genera un power-up aleatorio en una plataforma"""
+    # Contar power-ups aleatorios existentes (excluyendo los fijos)
+    random_powerups = [p for p in self.power_ups if not p.collected]
+    if len(random_powerups) >= self.max_random_powerups:
+        return  # No spawnear más si ya hay demasiados
+    
+    # Elegir una plataforma aleatoria (excluyendo el suelo y la plataforma superior)
+    if len(self.platforms) < 3:
+        return
+    
+    # Usar plataformas del medio (niveles 1, 2, 3)
+    available_platforms = self.platforms[1:-1]  # Excluir suelo y plataforma superior
+    platform = random.choice(available_platforms)
+    
+    # Calcular posición aleatoria en la plataforma
+    spawn_x = random.randint(platform.x + 20, platform.x + platform.width - 20)
+    spawn_y = platform.y - 20  # Un poco arriba de la plataforma
+    
+    # Crear el power-up
+    powerup = PowerUp(spawn_x, spawn_y, powerup_type)
+    self.power_ups.append(powerup)
+
 def update(self, player):
     """Actualiza toda la lógica del juego"""
     # Spawn de barriles
@@ -347,6 +377,21 @@ def update(self, player):
         self.barrel_spawn_timer = 0
         self.spawn_barrel()
         self.barrel_spawn_rate = max(60, 180 - (self.level * 20))
+    
+    # Spawn de power-ups aleatorios
+    self.hammer_spawn_timer += 1
+    if self.hammer_spawn_timer >= self.hammer_spawn_rate:
+        self.hammer_spawn_timer = 0
+        self.spawn_random_powerup("hammer")
+        # Reducir tiempo de spawn en niveles más altos
+        self.hammer_spawn_rate = max(300, 600 - (self.level * 50))
+    
+    self.bonus_spawn_timer += 1
+    if self.bonus_spawn_timer >= self.bonus_spawn_rate:
+        self.bonus_spawn_timer = 0
+        self.spawn_random_powerup("bonus")
+        # Reducir tiempo de spawn en niveles más altos
+        self.bonus_spawn_rate = max(450, 900 - (self.level * 75))
 
     # Actualizar barriles
     for barrel in self.barrels[:]:
@@ -387,9 +432,12 @@ def check_collisions(self, player):
             elif power_up.type == "bonus":
                 self.score += 1000
             elif power_up.type == "life":
-                if player.lives < 5:
+                if player.lives < 3:  # Si necesita la vida
                     player.lives += 1
-                self.score += 2000
+                    # No dar puntos porque necesita la vida
+                else:  # Si ya tiene todas las vidas (3/3)
+                    # Dar puntos porque no necesita la vida
+                    self.score += 2000
 
 def draw(self, screen):
     """Dibuja todos los elementos del mapa"""
@@ -444,10 +492,87 @@ def get_score(self):
     """Retorna la puntuación actual"""
     return self.score
 
+def draw_hearts(self, screen, lives, x, y, heart_size=30):
+    """Dibuja corazones para mostrar las vidas del jugador con mejor diseño"""
+    heart_color = (255, 0, 0)  # Rojo
+    broken_heart_color = (80, 80, 80)  # Gris oscuro para corazones rotos
+    
+    for i in range(3):  # Siempre mostrar 3 corazones
+        heart_x = x + i * (heart_size + 8)
+        heart_y = y
+        
+        if i < lives:
+            # Dibujar corazón completo con mejor forma
+            self._draw_single_heart(screen, heart_x, heart_y, heart_size, heart_color, False)
+        else:
+            # Dibujar corazón roto con X
+            self._draw_single_heart(screen, heart_x, heart_y, heart_size, broken_heart_color, True)
+
+def _draw_single_heart(self, screen, x, y, size, color, broken=False):
+    """Dibuja un solo corazón con forma más realista y detallada"""
+    center_x = x + size // 2
+    center_y = y + size // 2
+    heart_radius = size // 3
+    
+    # Calcular puntos para el corazón más realista
+    # Parte superior: dos círculos más grandes
+    left_circle_center = (center_x - heart_radius//2, center_y - heart_radius//3)
+    right_circle_center = (center_x + heart_radius//2, center_y - heart_radius//3)
+    circle_radius = heart_radius * 0.8
+    
+    # Dibujar los círculos superiores
+    pygame.draw.circle(screen, color, left_circle_center, int(circle_radius))
+    pygame.draw.circle(screen, color, right_circle_center, int(circle_radius))
+    
+    # Parte inferior del corazón: triángulo más suave
+    # Puntos del triángulo inferior
+    bottom_point = (center_x, center_y + heart_radius)
+    left_point = (center_x - heart_radius * 1.2, center_y + heart_radius * 0.3)
+    right_point = (center_x + heart_radius * 1.2, center_y + heart_radius * 0.3)
+    
+    # Crear un polígono más suave para la parte inferior
+    heart_points = [
+        left_point,
+        (center_x - heart_radius * 0.8, center_y + heart_radius * 0.6),
+        bottom_point,
+        (center_x + heart_radius * 0.8, center_y + heart_radius * 0.6),
+        right_point
+    ]
+    pygame.draw.polygon(screen, color, heart_points)
+    
+    # Rellenar las áreas donde se conectan los círculos con el triángulo
+    # Pequeños rectángulos para suavizar la transición
+    pygame.draw.rect(screen, color, 
+                    (center_x - heart_radius//2, center_y - heart_radius//6, 
+                     heart_radius, heart_radius//3))
+    
+    # Si está roto, dibujar X más elegante
+    if broken:
+        line_width = max(2, size // 12)
+        # X diagonal con mejor proporción
+        margin = size // 8
+        start_x, start_y = x + margin, y + margin
+        end_x, end_y = x + size - margin, y + size - margin
+        pygame.draw.line(screen, (120, 120, 120), (start_x, start_y), (end_x, end_y), line_width)
+        pygame.draw.line(screen, (120, 120, 120), (end_x, start_y), (start_x, end_y), line_width)
+        
+        # Añadir un pequeño efecto de "grieta" en el centro
+        crack_width = line_width // 2
+        crack_length = size // 4
+        crack_x = center_x - crack_length // 2
+        crack_y = center_y - crack_length // 2
+        pygame.draw.line(screen, (100, 100, 100), 
+                        (crack_x, crack_y), 
+                        (crack_x + crack_length, crack_y + crack_length), 
+                        crack_width)
+
 def next_level(self):
     """Avanza al siguiente nivel"""
     self.level += 1
     self.barrel_spawn_rate = max(60, 180 - (self.level * 20))
+    # Resetear timers de power-ups para el nuevo nivel
+    self.hammer_spawn_timer = 0
+    self.bonus_spawn_timer = 0
     self.initialize_level()
 
 def reset_game(self):
@@ -456,6 +581,11 @@ def reset_game(self):
     self.score = 0
     self.barrel_spawn_timer = 0
     self.barrel_spawn_rate = 180
+    # Resetear timers de power-ups
+    self.hammer_spawn_timer = 0
+    self.bonus_spawn_timer = 0
+    self.hammer_spawn_rate = 600
+    self.bonus_spawn_rate = 900
     self.initialize_level()
 
 # Agregar todas las funciones como métodos de GameManager
@@ -463,6 +593,7 @@ GameManager.initialize_level = initialize_level
 GameManager.load_sounds = load_sounds
 GameManager.play_sound = play_sound
 GameManager.spawn_barrel = spawn_barrel
+GameManager.spawn_random_powerup = spawn_random_powerup
 GameManager.update = update
 GameManager.check_collisions = check_collisions
 GameManager.draw = draw
@@ -470,6 +601,8 @@ GameManager.draw_donkey_kong = draw_donkey_kong
 GameManager.get_platforms = get_platforms
 GameManager.get_ladders = get_ladders
 GameManager.get_score = get_score
+GameManager.draw_hearts = draw_hearts
+GameManager._draw_single_heart = _draw_single_heart
 GameManager.next_level = next_level
 GameManager.reset_game = reset_game
 

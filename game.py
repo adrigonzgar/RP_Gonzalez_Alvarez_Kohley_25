@@ -78,11 +78,11 @@ def main_game_loop(screen, clock):
         total_score = stats['score'] + game_manager.get_score()
         
         score_text = font_small.render(f"Score: {total_score}", True, WHITE)
-        lives_text = font_small.render(f"Lives: {stats['lives']}", True, WHITE)
         level_text = font_small.render(f"Level: {game_manager.level}", True, WHITE)
         
         screen.blit(score_text, (20, 20))
-        screen.blit(lives_text, (20, 50))
+        # Dibujar corazones en lugar del texto de vidas
+        game_manager.draw_hearts(screen, stats['lives'], 20, 50)
         screen.blit(level_text, (20, 80))
         
         # Mostrar número de barriles activos
@@ -179,11 +179,11 @@ def demo_game_loop(screen, clock):
         total_score = stats['score'] + game_manager.get_score()
         
         score_text = font_small.render(f"Score: {total_score}", True, WHITE)
-        lives_text = font_small.render(f"Lives: {stats['lives']}", True, WHITE)
         level_text = font_small.render(f"Level: {game_manager.level}", True, WHITE)
         
         screen.blit(score_text, (20, 60))
-        screen.blit(lives_text, (20, 90))
+        # Dibujar corazones en lugar del texto de vidas
+        game_manager.draw_hearts(screen, stats['lives'], 20, 90)
         screen.blit(level_text, (20, 120))
         
         # Tiempo restante de demo
