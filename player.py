@@ -92,14 +92,17 @@ class Player:
         # Aplicar física
         self._apply_physics(dt)
         
+        # Manejar wrap-around horizontal ANTES de verificar colisiones
+        self._handle_wrap_around()
+        
         # Verificar colisiones
         self._check_collisions(platforms, ladders)
         
         # Actualizar animación
         self._update_animation()
         
-        # Mantener dentro de los límites de pantalla
-        self._clamp_to_screen()
+        # Mantener límites verticales
+        self._clamp_vertical()
 
     def _handle_input(self, keys_pressed):
         """Maneja la entrada del teclado"""
@@ -178,15 +181,16 @@ class Player:
             else:
                 self.animation_frame = 0  # Frame estático
 
-    def _clamp_to_screen(self):
-        """Mantiene al jugador dentro de los límites de pantalla con wrap-around horizontal"""
+    def _handle_wrap_around(self):
+        """Maneja el wrap-around horizontal del jugador"""
         # Wrap-around horizontal: si sale por la izquierda, aparece por la derecha
         if self.x < -self.width:
             self.x = self.screen_width
         elif self.x > self.screen_width:
             self.x = -self.width
-        
-        # Mantener límites verticales normales
+
+    def _clamp_vertical(self):
+        """Mantiene los límites verticales del jugador"""
         if self.y < 0:
             self.y = 0
         elif self.y + self.height > self.screen_height:

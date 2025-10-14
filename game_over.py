@@ -13,6 +13,7 @@ import pygame
 import sys
 import time
 import math
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, WHITE, RED, YELLOW, GREEN
 
 class GameOverScreen:
     """Clase para manejar la pantalla de Game Over"""

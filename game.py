@@ -1,14 +1,11 @@
 import pygame
 import sys
 import time
-from Welcome_Screen import welcome_screen, SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, WHITE, RED, YELLOW
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, WHITE, RED, YELLOW, GREEN, BLUE
+from Welcome_Screen import welcome_screen
 from player import Player
 from game_manager import GameManager, DemoPlayer
 from game_over import show_game_over_screen
-
-# Colores adicionales que necesitamos
-GREEN = (0, 255, 0)
-BLUE = (0, 100, 255)
 
 def main_game_loop(screen, clock):
     """Loop principal del juego Donkey Kong"""
@@ -204,7 +201,11 @@ def demo_game_loop(screen, clock):
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                return  # Terminar demo y volver al menú
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+                else:
+                    return  # Terminar demo y volver al menú
 
 def main():
     """Función principal del programa"""

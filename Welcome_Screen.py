@@ -4,19 +4,9 @@ import os
 import math
 import random
 import time
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, WHITE, RED, YELLOW, BLUE, GREEN
 
-# Configuración de pantalla
-SCREEN_WIDTH = 896
-SCREEN_HEIGHT = 640
-FPS = 60
-
-# Colores básicos
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-YELLOW = (255, 255, 0)
-BLUE = (0, 100, 255)
-GREEN = (0, 255, 0)
+# Colores adicionales específicos de Welcome_Screen
 ORANGE = (255, 165, 0)
 CYAN = (0, 255, 255)
 
@@ -132,13 +122,13 @@ def draw_overlay_texts(screen, frame_count):
     font_tiny = pygame.font.Font(None, 24)
     
     # Texto principal parpadeante
-    press_key_x = SCREEN_WIDTH // 2 - 120
+    press_key_x = SCREEN_WIDTH // 2 - 100
     press_key_y = SCREEN_HEIGHT - 100
-    draw_blinking_text(screen, "PRESS ANY KEY", font_medium, YELLOW, 
+    draw_blinking_text(screen, "PRESS ENTER TO START", font_medium, YELLOW, 
                       press_key_x, press_key_y, frame_count, 40)
     
     # Cursor parpadeante después del texto
-    cursor_x = press_key_x + 240
+    cursor_x = press_key_x + 320  # Ajustado para el texto más largo
     cursor_y = press_key_y + 5
     draw_blinking_cursor(screen, cursor_x, cursor_y, frame_count)
     
@@ -243,14 +233,15 @@ def welcome_screen(screen, clock):
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                # Efecto visual al presionar tecla
-                flash_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-                flash_surface.fill(YELLOW)
-                flash_surface.set_alpha(50)
-                screen.blit(flash_surface, (0, 0))
-                pygame.display.flip()
-                pygame.time.wait(100)  # Breve pausa para el efecto
-                return "play"  # Señal para juego normal
+                if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                    # Efecto visual al presionar ENTER o SPACE
+                    flash_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                    flash_surface.fill(YELLOW)
+                    flash_surface.set_alpha(50)
+                    screen.blit(flash_surface, (0, 0))
+                    pygame.display.flip()
+                    pygame.time.wait(100)  # Breve pausa para el efecto
+                    return "play"  # Señal para juego normal
     
     return "play"  # Por defecto
 
