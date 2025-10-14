@@ -34,6 +34,9 @@ class Player:
         self.screen_width = screen_width
         self.screen_height = screen_height
         
+        # Referencia al sound manager (se asignará externamente)
+        self.sound_manager = None
+        
         # Velocidades
         self.speed = 4
         self.jump_speed = 9
@@ -125,6 +128,9 @@ class Player:
             self.vel_y = -self.jump_speed
             self.is_jumping = True
             self.on_ground = False
+            # Reproducir sonido de salto
+            if self.sound_manager:
+                self.sound_manager.play_sound('jump')
         
         # Subir/bajar escaleras
         if keys_pressed[pygame.K_UP] or keys_pressed[pygame.K_w]:
@@ -308,6 +314,9 @@ class Player:
             self.vel_y = -self.jump_speed
             self.is_jumping = True
             self.on_ground = False
+            # Reproducir sonido de salto
+            if self.sound_manager:
+                self.sound_manager.play_sound('jump')
 
     def add_score(self, points):
         """Añadir puntos al score"""

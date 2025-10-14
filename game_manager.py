@@ -321,13 +321,14 @@ class GameManager:
         self.barrels_dodged = 0
         self.powerups_collected = 0
         
-        # Sistema de sonido
-        self.sounds_enabled = False
-        self.sounds = {}
+        # Sistema de sonido (se inicializará externamente)
+        self.sound_manager = None
+        
+        # Sistema de partículas (se inicializará externamente)
+        self.particle_system = None
         
         # Inicializar sistemas
         self.initialize_level()
-        self.load_sounds()
 
 class DemoPlayer:
     """Clase para simular un jugador automático en modo demo"""
@@ -489,9 +490,9 @@ def load_sounds(self):
         self.sounds_enabled = False
 
 def play_sound(self, sound_name):
-    """Reproduce un sonido"""
-    if self.sounds_enabled and sound_name in self.sounds:
-        self.sounds[sound_name].play()
+    """Reproduce un sonido usando el sound manager"""
+    if self.sound_manager:
+        self.sound_manager.play_sound(sound_name)
 
 def spawn_barrel(self):
     """Genera un nuevo barril con velocidad según el nivel"""
@@ -580,6 +581,11 @@ def check_collisions(self, player):
     for barrel in self.barrels[:]:
         if player_rect.colliderect(barrel.get_rect()):
             player.lose_life()
+            
+            # Crear efecto de explosión
+            if self.particle_system:
+                self.particle_system.create_explosion_effect(barrel.x + 10, barrel.y + 10)
+            
             self.barrels.remove(barrel)
             self.play_sound('hit')
             break
@@ -591,23 +597,42 @@ def check_collisions(self, player):
             self.powerups_collected += 1
             self.play_sound('powerup')
             
-            if power_up.type == "hammer":
-                self.score += 500
-            elif power_up.type == "bonus":
-                self.score += 1000
-            elif power_up.type == "life":
-                if player.lives < 3:  # Si necesita la vida
-                    player.lives += 1
-                    # No dar puntos porque necesita la vida
-                else:  # Si ya tiene todas las vidas (3/3)
-                    # Dar puntos porque no necesita la vida
-                    self.score += 2000
+            # Crear efecto de partículas según el tipo
+            if self.particle_system:
+                if power_up.type == "hammer":
+                    self.particle_system.create_sparkle_effect(power_up.x + 8, power_up.y + 8, 'blue')
+                    self.score += 500
+                elif power_up.type == "bonus":
+                    self.particle_system.create_sparkle_effect(power_up.x + 8, power_up.y + 8, 'gold')
+                    self.score += 1000
+                elif power_up.type == "life":
+                    self.particle_system.create_star_effect(power_up.x + 8, power_up.y + 8)
+                    if player.lives < 3:  # Si necesita la vida
+                        player.lives += 1
+                        # No dar puntos porque necesita la vida
+                    else:  # Si ya tiene todas las vidas (3/3)
+                        # Dar puntos porque no necesita la vida
+                        self.score += 2000
+            else:
+                if power_up.type == "hammer":
+                    self.score += 500
+                elif power_up.type == "bonus":
+                    self.score += 1000
+                elif power_up.type == "life":
+                    if player.lives < 3:
+                        player.lives += 1
+                    else:
+                        self.score += 2000
     
     # Colisión con la corona (completar nivel)
     if self.crown and not self.crown.collected and player_rect.colliderect(self.crown.get_rect()):
         self.crown.collected = True
         self.score += 5000  # Bonus por completar el nivel
         level_completed = True
+        
+        # Crear efecto especial de partículas para la corona
+        if self.particle_system:
+            self.particle_system.create_crown_sparkle(self.crown.x + 12, self.crown.y + 10)
     
     return level_completed
 
@@ -648,17 +673,44 @@ def draw(self, screen):
         self.crown.draw(screen)
 
 def draw_donkey_kong(self, screen):
-    """Dibuja a Donkey Kong en la parte superior"""
+    """Dibuja a Donkey Kong en la parte superior con animación"""
     dk_x = 350
     dk_y = self.screen_height - 520
     
+    # Animación de brazos cuando está por lanzar un barril
+    arm_offset = 0
+    if self.barrel_spawn_timer > self.barrel_spawn_rate - 30:
+        # Levantar brazos antes de lanzar
+        arm_offset = int(5 * math.sin((self.barrel_spawn_timer / 10) * math.pi))
+    
+    # Cuerpo
     pygame.draw.rect(screen, (139, 69, 19), (dk_x, dk_y + 20, 60, 40))
+    
+    # Cabeza
     pygame.draw.rect(screen, (139, 69, 19), (dk_x + 10, dk_y, 40, 30))
+    
+    # Cara
     pygame.draw.rect(screen, (222, 184, 135), (dk_x + 15, dk_y + 5, 30, 20))
-    pygame.draw.rect(screen, (0, 0, 0), (dk_x + 20, dk_y + 10, 4, 4))
-    pygame.draw.rect(screen, (0, 0, 0), (dk_x + 30, dk_y + 10, 4, 4))
-    pygame.draw.rect(screen, (139, 69, 19), (dk_x - 10, dk_y + 25, 15, 25))
-    pygame.draw.rect(screen, (139, 69, 19), (dk_x + 55, dk_y + 25, 15, 25))
+    
+    # Ojos (parpadeo ocasional)
+    if (self.barrel_spawn_timer // 60) % 10 != 0:  # Parpadea cada 10 segundos
+        pygame.draw.rect(screen, (0, 0, 0), (dk_x + 20, dk_y + 10, 4, 4))
+        pygame.draw.rect(screen, (0, 0, 0), (dk_x + 30, dk_y + 10, 4, 4))
+    else:
+        # Ojos cerrados (línea)
+        pygame.draw.line(screen, (0, 0, 0), (dk_x + 20, dk_y + 12), (dk_x + 24, dk_y + 12), 2)
+        pygame.draw.line(screen, (0, 0, 0), (dk_x + 30, dk_y + 12), (dk_x + 34, dk_y + 12), 2)
+    
+    # Brazos animados
+    pygame.draw.rect(screen, (139, 69, 19), (dk_x - 10, dk_y + 25 - arm_offset, 15, 25))
+    pygame.draw.rect(screen, (139, 69, 19), (dk_x + 55, dk_y + 25 - arm_offset, 15, 25))
+    
+    # Barril en las manos si está a punto de lanzar
+    if self.barrel_spawn_timer > self.barrel_spawn_rate - 20:
+        barrel_x = dk_x + 20
+        barrel_y = dk_y + 15 - arm_offset
+        pygame.draw.rect(screen, (101, 67, 33), (barrel_x, barrel_y, 20, 20))
+        pygame.draw.rect(screen, (139, 69, 19), (barrel_x + 2, barrel_y + 2, 16, 16))
 
 def get_platforms(self):
     """Retorna las plataformas para el sistema de colisiones (estáticas y móviles)"""

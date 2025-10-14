@@ -8,6 +8,11 @@ from game_manager import GameManager, DemoPlayer
 from game_over import show_game_over_screen
 from victory_screen import show_victory_screen
 from loading_screen import show_loading_screen
+from sound_manager import SoundManager
+from particle_system import ParticleSystem
+from highscore_manager import HighScoreManager
+from name_entry_screen import show_name_entry_screen
+from camera_shake import CameraShake
 
 def show_level_selector(screen, clock):
     """
@@ -162,7 +167,7 @@ def show_level_complete_message(screen, clock, next_level):
                 pygame.quit()
                 sys.exit()
 
-def main_game_loop(screen, clock, is_fullscreen, starting_level=1):
+def main_game_loop(screen, clock, is_fullscreen, sound_manager, highscore_manager, starting_level=1):
     """Loop principal del juego Donkey Kong"""
     running = True
     game_start_time = time.time()
@@ -174,13 +179,29 @@ def main_game_loop(screen, clock, is_fullscreen, starting_level=1):
     
     # Crear el jugador (Mario) - Inicia en el centro, cayendo desde arriba
     player = Player(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT)
+    player.sound_manager = sound_manager  # Asignar el sound manager al jugador
     
     # Crear el gestor del juego
     game_manager = GameManager(SCREEN_WIDTH, SCREEN_HEIGHT)
+    game_manager.sound_manager = sound_manager  # Asignar el sound manager
+    
+    # Crear sistema de partículas
+    particle_system = ParticleSystem()
+    game_manager.particle_system = particle_system  # Asignar al game manager
+    
+    # Crear sistema de camera shake
+    camera_shake = CameraShake()
     
     # Establecer el nivel inicial
     game_manager.level = starting_level
     game_manager.initialize_level()
+    
+    # Reproducir música de nivel
+    if sound_manager:
+        sound_manager.play_music("level")
+    
+    # Variables para detectar eventos
+    previous_lives = player.lives
     
     # Variables del juego
     dt = clock.get_time() / 1000.0  # Delta time en segundos
@@ -194,8 +215,19 @@ def main_game_loop(screen, clock, is_fullscreen, starting_level=1):
         # Actualizar jugador
         player.update(keys_pressed, game_manager.get_platforms(), game_manager.get_ladders(), dt, game_manager.get_moving_platforms())
         
+        # Detectar pérdida de vida para camera shake
+        if player.lives < previous_lives:
+            camera_shake.start_shake(intensity=15, duration=20)
+        previous_lives = player.lives
+        
         # Actualizar lógica del juego
         level_completed = game_manager.update(player)
+        
+        # Actualizar sistema de partículas
+        particle_system.update()
+        
+        # Actualizar camera shake
+        camera_shake.update()
         
         # Verificar si se completó el nivel
         if level_completed:
@@ -213,12 +245,20 @@ def main_game_loop(screen, clock, is_fullscreen, starting_level=1):
                     'powerups_collected': getattr(game_manager, 'powerups_collected', 0)
                 }
                 
+                # Reproducir sonido de victoria
+                if sound_manager:
+                    sound_manager.play_sound('victory')
+                
                 # Mostrar pantalla de victoria
                 show_victory_screen(screen, clock, player_stats, game_manager_stats, total_time)
                 
                 # Volver al menú principal
                 return
             else:
+                # Reproducir sonido de nivel completado
+                if sound_manager:
+                    sound_manager.play_sound('level_complete')
+                
                 # Mostrar mensaje de nivel completado
                 show_level_complete_message(screen, clock, game_manager.level + 1)
                 
@@ -243,6 +283,14 @@ def main_game_loop(screen, clock, is_fullscreen, starting_level=1):
                 'powerups_collected': getattr(game_manager, 'powerups_collected', 0)
             }
             
+            # Verificar si es high score
+            total_score = player_stats['score'] + game_manager_stats['score']
+            if highscore_manager.is_highscore(total_score):
+                # Pedir nombre al jugador
+                rank = highscore_manager.get_rank(total_score)
+                player_name = show_name_entry_screen(screen, clock, total_score, rank)
+                highscore_manager.add_highscore(player_name, total_score, game_manager.level)
+            
             # Mostrar pantalla de Game Over
             choice = show_game_over_screen(screen, clock, player_stats, game_manager_stats, total_time)
             
@@ -261,6 +309,9 @@ def main_game_loop(screen, clock, is_fullscreen, starting_level=1):
         
         # Dibujar jugador
         player.draw(game_surface)
+        
+        # Dibujar partículas (encima del jugador)
+        particle_system.draw(game_surface)
         
         # UI del juego
         font_small = pygame.font.Font(None, 32)
@@ -284,13 +335,17 @@ def main_game_loop(screen, clock, is_fullscreen, starting_level=1):
         game_surface.blit(barrel_text, (20, 110))
         
         # Controles
-        controls_text = font_tiny.render("Controls: WASD/Arrows, Space=jump, ESC=exit, R=menu, F11=fullscreen", True, WHITE)
-        game_surface.blit(controls_text, (20, SCREEN_HEIGHT - 30))
+        controls_text = font_tiny.render("WASD/Arrows, Space=jump, ESC=exit, R=menu, F11=fullscreen, L=level select", True, WHITE)
+        game_surface.blit(controls_text, (10, SCREEN_HEIGHT - 30))
         
         # Tiempo transcurrido
         elapsed = time.time() - game_start_time
         time_text = font_tiny.render(f"Game Time: {elapsed:.1f}s", True, GREEN)
         game_surface.blit(time_text, (SCREEN_WIDTH - 150, 20))
+        
+        
+        # Obtener offset de camera shake
+        shake_x, shake_y = camera_shake.get_offset()
         
         # Escalar y dibujar en la pantalla real
         if current_fullscreen:
@@ -305,14 +360,14 @@ def main_game_loop(screen, clock, is_fullscreen, starting_level=1):
             
             scaled_surface = pygame.transform.scale(game_surface, (new_w, new_h))
             
-            # Centrar en pantalla
-            x = (screen_w - new_w) // 2
-            y = (screen_h - new_h) // 2
+            # Centrar en pantalla con shake
+            x = (screen_w - new_w) // 2 + int(shake_x * scale)
+            y = (screen_h - new_h) // 2 + int(shake_y * scale)
             
             current_screen.fill(BLACK)
             current_screen.blit(scaled_surface, (x, y))
         else:
-            current_screen.blit(game_surface, (0, 0))
+            current_screen.blit(game_surface, (shake_x, shake_y))
         
         pygame.display.flip()
         clock.tick(FPS)
@@ -467,9 +522,14 @@ def main():
     clock = pygame.time.Clock()
     is_fullscreen = False  # Estado de pantalla completa
     
+    # Sistema de sonido desactivado
+    sound_manager = None
+    
+    # Crear el gestor de high scores
+    highscore_manager = HighScoreManager()
+    
     # Mostrar pantalla de carga al inicio
     initialization_steps = [
-        (lambda: pygame.mixer.init(), "Initializing audio system"),
         (lambda: pygame.font.init(), "Loading fonts"),
         (lambda: time.sleep(0.2), "Loading game resources"),
         (lambda: time.sleep(0.2), "Loading level configurations"),
@@ -493,10 +553,10 @@ def main():
             # Mostrar selector de niveles
             selected_level = show_level_selector(screen, clock)
             # Iniciar el juego en el nivel seleccionado
-            main_game_loop(screen, clock, is_fullscreen, selected_level)
+            main_game_loop(screen, clock, is_fullscreen, sound_manager, highscore_manager, selected_level)
         else:
             # Iniciar el juego principal desde nivel 1
-            main_game_loop(screen, clock, is_fullscreen, 1)
+            main_game_loop(screen, clock, is_fullscreen, sound_manager, highscore_manager, 1)
         
         # Si llegamos aquí, volver a la pantalla de bienvenida
 

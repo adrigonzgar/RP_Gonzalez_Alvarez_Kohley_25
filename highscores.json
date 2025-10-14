@@ -1,0 +1,62 @@
+[
+  {
+    "name": "MARIO",
+    "score": 50000,
+    "level": 5,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "LUIGI",
+    "score": 45000,
+    "level": 5,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "PEACH",
+    "score": 40000,
+    "level": 4,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "TOAD",
+    "score": 35000,
+    "level": 4,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "YOSHI",
+    "score": 30000,
+    "level": 3,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "BOWSR",
+    "score": 25000,
+    "level": 3,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "WARIO",
+    "score": 20000,
+    "level": 2,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "WALIG",
+    "score": 15000,
+    "level": 2,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "DAISY",
+    "score": 10000,
+    "level": 1,
+    "date": "2025-01-01"
+  },
+  {
+    "name": "ADRIA",
+    "score": 10000,
+    "level": 2,
+    "date": "2025-10-14"
+  }
+]
