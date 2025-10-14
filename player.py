@@ -36,7 +36,7 @@ class Player:
         
         # Velocidades
         self.speed = 4
-        self.jump_speed = 12
+        self.jump_speed = 9
         self.gravity = 0.8
         self.max_fall_speed = 10
         
@@ -179,12 +179,14 @@ class Player:
                 self.animation_frame = 0  # Frame estático
 
     def _clamp_to_screen(self):
-        """Mantiene al jugador dentro de los límites de pantalla"""
-        if self.x < 0:
-            self.x = 0
-        elif self.x + self.width > self.screen_width:
-            self.x = self.screen_width - self.width
+        """Mantiene al jugador dentro de los límites de pantalla con wrap-around horizontal"""
+        # Wrap-around horizontal: si sale por la izquierda, aparece por la derecha
+        if self.x < -self.width:
+            self.x = self.screen_width
+        elif self.x > self.screen_width:
+            self.x = -self.width
         
+        # Mantener límites verticales normales
         if self.y < 0:
             self.y = 0
         elif self.y + self.height > self.screen_height:
