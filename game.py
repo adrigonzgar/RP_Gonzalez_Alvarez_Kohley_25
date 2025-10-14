@@ -7,13 +7,73 @@ from player import Player
 from game_manager import GameManager, DemoPlayer
 from game_over import show_game_over_screen
 
+def show_level_complete_message(screen, clock, next_level):
+    """
+    Muestra un mensaje parpadeante de nivel completado
+    
+    Args:
+        screen: Superficie de pygame
+        clock: Reloj de pygame
+        next_level: Número del siguiente nivel
+    """
+    # Duración del mensaje (2 segundos)
+    duration = 2.0
+    start_time = time.time()
+    
+    # Guardar el contenido actual de la pantalla
+    screen_copy = screen.copy()
+    
+    # Fuentes
+    font_large = pygame.font.Font(None, 72)
+    font_medium = pygame.font.Font(None, 48)
+    
+    while time.time() - start_time < duration:
+        # Calcular el parpadeo
+        elapsed = time.time() - start_time
+        blink = int(elapsed * 8) % 2  # Parpadea 8 veces por segundo
+        
+        # Restaurar la pantalla original
+        screen.blit(screen_copy, (0, 0))
+        
+        # Crear overlay semitransparente
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.fill(BLACK)
+        overlay.set_alpha(150)
+        screen.blit(overlay, (0, 0))
+        
+        # Dibujar mensaje si está en fase visible del parpadeo
+        if blink == 1:
+            # Texto principal
+            level_text = font_large.render(f"LEVEL {next_level}", True, YELLOW)
+            level_rect = level_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 30))
+            
+            # Sombra del texto
+            shadow_text = font_large.render(f"LEVEL {next_level}", True, (50, 50, 0))
+            shadow_rect = shadow_text.get_rect(center=(SCREEN_WIDTH // 2 + 3, SCREEN_HEIGHT // 2 - 27))
+            screen.blit(shadow_text, shadow_rect)
+            screen.blit(level_text, level_rect)
+            
+            # Texto secundario
+            complete_text = font_medium.render("LEVEL COMPLETE!", True, WHITE)
+            complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40))
+            screen.blit(complete_text, complete_rect)
+        
+        pygame.display.flip()
+        clock.tick(FPS)
+        
+        # Procesar eventos para evitar que el programa se congele
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
 def main_game_loop(screen, clock):
     """Loop principal del juego Donkey Kong"""
     running = True
     game_start_time = time.time()
     
-    # Crear el jugador (Mario)
-    player = Player(100, SCREEN_HEIGHT - 200, SCREEN_WIDTH, SCREEN_HEIGHT)
+    # Crear el jugador (Mario) - Inicia en el centro, cayendo desde arriba
+    player = Player(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT)
     
     # Crear el gestor del juego
     game_manager = GameManager(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -31,7 +91,19 @@ def main_game_loop(screen, clock):
         player.update(keys_pressed, game_manager.get_platforms(), game_manager.get_ladders(), dt)
         
         # Actualizar lógica del juego
-        game_manager.update(player)
+        level_completed = game_manager.update(player)
+        
+        # Verificar si se completó el nivel
+        if level_completed:
+            # Mostrar mensaje de nivel completado
+            show_level_complete_message(screen, clock, game_manager.level + 1)
+            
+            # Avanzar al siguiente nivel
+            game_manager.level += 1
+            game_manager.initialize_level()
+            
+            # Resetear posición del jugador - cayendo desde el centro
+            player.reset_position(SCREEN_WIDTH // 2 - 12, SCREEN_HEIGHT // 2)
         
         # Verificar Game Over
         if player.lives <= 0:
@@ -116,8 +188,8 @@ def main_game_loop(screen, clock):
 
 def demo_game_loop(screen, clock):
     """Loop del juego en modo demo (automático)"""
-    # Crear el jugador (Mario)
-    player = Player(100, SCREEN_HEIGHT - 200, SCREEN_WIDTH, SCREEN_HEIGHT)
+    # Crear el jugador (Mario) - Inicia en el centro, cayendo desde arriba
+    player = Player(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT)
     
     # Crear el gestor del juego
     game_manager = GameManager(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -149,7 +221,7 @@ def demo_game_loop(screen, clock):
         
         # Si el jugador muere en demo, reiniciar
         if player.lives <= 0:
-            player = Player(100, SCREEN_HEIGHT - 200, SCREEN_WIDTH, SCREEN_HEIGHT)
+            player = Player(SCREEN_WIDTH // 2 - 12, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT)
             game_manager = GameManager(SCREEN_WIDTH, SCREEN_HEIGHT)
             demo_player = DemoPlayer(player, game_manager.get_platforms(), game_manager.get_ladders(), game_manager)
         

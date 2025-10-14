@@ -94,6 +94,81 @@ class Barrel:
         """Retorna el rectángulo de colisión"""
         return pygame.Rect(self.x, self.y, self.width, self.height)
 
+class Crown:
+    """Clase para la corona que completa el nivel"""
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.width = 24
+        self.height = 20
+        self.collected = False
+        self.animation_frame = 0
+        self.animation_timer = 0
+        self.float_offset = 0
+        self.sparkle_timer = 0
+
+    def update(self):
+        """Actualiza la animación de la corona"""
+        self.animation_timer += 1
+        if self.animation_timer >= 8:
+            self.animation_timer = 0
+            self.animation_frame = (self.animation_frame + 1) % 8
+        
+        # Efecto de flotación
+        self.float_offset = int(4 * math.sin(self.animation_frame * 0.5))
+        
+        # Timer para destellos
+        self.sparkle_timer += 1
+
+    def draw(self, screen):
+        """Dibuja la corona con efectos dorados"""
+        draw_y = self.y + self.float_offset
+        
+        # Color dorado brillante
+        gold = (255, 215, 0)
+        dark_gold = (218, 165, 32)
+        yellow = (255, 255, 0)
+        
+        # Base de la corona
+        base_rect = pygame.Rect(self.x + 2, draw_y + 14, 20, 6)
+        pygame.draw.rect(screen, dark_gold, base_rect)
+        
+        # Puntas de la corona (5 puntas)
+        points = []
+        for i in range(5):
+            x_offset = i * 5
+            points.append((self.x + 2 + x_offset, draw_y + 14))
+            points.append((self.x + 4 + x_offset, draw_y + 6))
+            points.append((self.x + 6 + x_offset, draw_y + 14))
+        
+        # Dibujar la corona como polígono
+        crown_points = [
+            (self.x + 2, draw_y + 14),
+            (self.x + 4, draw_y + 6),
+            (self.x + 7, draw_y + 10),
+            (self.x + 12, draw_y + 4),
+            (self.x + 17, draw_y + 10),
+            (self.x + 20, draw_y + 6),
+            (self.x + 22, draw_y + 14),
+        ]
+        pygame.draw.polygon(screen, gold, crown_points)
+        pygame.draw.polygon(screen, dark_gold, crown_points, 2)
+        
+        # Joyas en la corona
+        if self.animation_frame % 2 == 0:
+            pygame.draw.circle(screen, (255, 0, 0), (self.x + 7, draw_y + 10), 2)
+            pygame.draw.circle(screen, (0, 255, 0), (self.x + 12, draw_y + 6), 2)
+            pygame.draw.circle(screen, (0, 0, 255), (self.x + 17, draw_y + 10), 2)
+        
+        # Destello brillante
+        if self.sparkle_timer % 30 < 5:
+            sparkle_size = 3 - (self.sparkle_timer % 30)
+            pygame.draw.circle(screen, yellow, (self.x + 12, draw_y + 4), sparkle_size)
+
+    def get_rect(self):
+        """Retorna el rectángulo de colisión"""
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+
 class PowerUp:
     """Clase para power-ups y recompensas"""
     def __init__(self, x, y, type_name="hammer"):
@@ -166,6 +241,7 @@ class GameManager:
         self.power_ups = []
         self.platforms = []
         self.ladders = []
+        self.crown = None  # Corona para completar el nivel
         
         # Configuración del juego
         self.barrel_spawn_timer = 0
@@ -295,24 +371,31 @@ def initialize_level(self):
         
         # Nivel superior (donde está Donkey Kong)
         pygame.Rect(200, self.screen_height - 450, 400, 20),
+        
+        # Plataforma de la corona (arriba de Donkey Kong)
+        pygame.Rect(350, self.screen_height - 550, 100, 20),
     ]
     
-    # Crear escaleras
+    # Crear escaleras (rediseñadas para mejor navegación)
     self.ladders = [
-        # Escaleras del primer nivel
-        pygame.Rect(370, self.screen_height - 170, 20, 120),
-        pygame.Rect(430, self.screen_height - 170, 20, 120),
+        # Escaleras del suelo al primer nivel (izquierda y derecha)
+        pygame.Rect(150, self.screen_height - 150, 20, 100),  # Izquierda
+        pygame.Rect(650, self.screen_height - 150, 20, 100),  # Derecha
         
-        # Escaleras del segundo nivel
-        pygame.Rect(320, self.screen_height - 270, 20, 120),
-        pygame.Rect(480, self.screen_height - 270, 20, 120),
+        # Escaleras del primer al segundo nivel
+        pygame.Rect(200, self.screen_height - 250, 20, 100),  # Izquierda
+        pygame.Rect(600, self.screen_height - 250, 20, 100),  # Derecha
         
-        # Escaleras del tercer nivel
-        pygame.Rect(370, self.screen_height - 370, 20, 120),
-        pygame.Rect(530, self.screen_height - 370, 20, 120),
+        # Escaleras del segundo al tercer nivel
+        pygame.Rect(250, self.screen_height - 350, 20, 100),  # Izquierda
+        pygame.Rect(650, self.screen_height - 350, 20, 100),  # Derecha
         
-        # Escalera final
-        pygame.Rect(400, self.screen_height - 470, 20, 120),
+        # Escaleras del tercer nivel a la plataforma de Donkey Kong
+        pygame.Rect(300, self.screen_height - 450, 20, 100),  # Izquierda
+        pygame.Rect(500, self.screen_height - 450, 20, 100),  # Derecha
+        
+        # Escalera final a la plataforma de la corona (centro)
+        pygame.Rect(400, self.screen_height - 550, 20, 100),
     ]
     
     # Colocar power-ups estratégicamente
@@ -322,6 +405,11 @@ def initialize_level(self):
         PowerUp(300, self.screen_height - 370, "life"),
         PowerUp(650, self.screen_height - 370, "bonus"),
     ]
+    
+    # Crear la corona en la plataforma superior
+    crown_x = 350 + 50 - 12  # Centro de la plataforma
+    crown_y = self.screen_height - 575  # Arriba de la plataforma
+    self.crown = Crown(crown_x, crown_y)
 
 # Agregar todas las funciones que faltan a GameManager
 def load_sounds(self):
@@ -404,13 +492,19 @@ def update(self, player):
     for power_up in self.power_ups:
         if not power_up.collected:
             power_up.update()
+    
+    # Actualizar corona
+    if self.crown and not self.crown.collected:
+        self.crown.update()
 
     # Verificar colisiones del jugador
-    self.check_collisions(player)
+    level_completed = self.check_collisions(player)
+    return level_completed  # Retorna True si se completó el nivel
 
 def check_collisions(self, player):
     """Verifica colisiones entre el jugador y otros objetos"""
     player_rect = player.get_rect()
+    level_completed = False
     
     # Colisiones con barriles
     for barrel in self.barrels[:]:
@@ -438,6 +532,14 @@ def check_collisions(self, player):
                 else:  # Si ya tiene todas las vidas (3/3)
                     # Dar puntos porque no necesita la vida
                     self.score += 2000
+    
+    # Colisión con la corona (completar nivel)
+    if self.crown and not self.crown.collected and player_rect.colliderect(self.crown.get_rect()):
+        self.crown.collected = True
+        self.score += 5000  # Bonus por completar el nivel
+        level_completed = True
+    
+    return level_completed
 
 def draw(self, screen):
     """Dibuja todos los elementos del mapa"""
@@ -466,6 +568,10 @@ def draw(self, screen):
     for power_up in self.power_ups:
         if not power_up.collected:
             power_up.draw(screen)
+    
+    # Dibujar corona
+    if self.crown and not self.crown.collected:
+        self.crown.draw(screen)
 
 def draw_donkey_kong(self, screen):
     """Dibuja a Donkey Kong en la parte superior"""
