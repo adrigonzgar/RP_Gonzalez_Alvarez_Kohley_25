@@ -15,15 +15,69 @@ import pygame
 import random
 import math
 import os
+import json
+
+class MovingPlatform:
+    """Clase para plataformas móviles"""
+    def __init__(self, x, y, width, height, move_type="horizontal", move_range=100, move_speed=1.0):
+        self.start_x = x
+        self.start_y = y
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.move_type = move_type  # "horizontal" o "vertical"
+        self.move_range = move_range
+        self.move_speed = move_speed
+        self.direction = 1  # 1 o -1
+        self.offset = 0
+        
+    def update(self):
+        """Actualiza la posición de la plataforma"""
+        # Calcular nuevo offset
+        new_offset = self.offset + (self.move_speed * self.direction)
+        
+        # Verificar límites y cambiar dirección si es necesario
+        if new_offset >= self.move_range:
+            self.offset = self.move_range
+            self.direction = -1
+        elif new_offset <= -self.move_range:
+            self.offset = -self.move_range
+            self.direction = 1
+        else:
+            self.offset = new_offset
+        
+        # Actualizar posición según el tipo de movimiento
+        if self.move_type == "horizontal":
+            self.x = self.start_x + self.offset
+            self.y = self.start_y
+        elif self.move_type == "vertical":
+            self.x = self.start_x
+            self.y = self.start_y + self.offset
+    
+    def get_rect(self):
+        """Retorna el rectángulo de la plataforma"""
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+    
+    def draw(self, screen):
+        """Dibuja la plataforma móvil con un color diferente"""
+        rect = self.get_rect()
+        # Color diferente para plataformas móviles (naranja)
+        pygame.draw.rect(screen, (255, 140, 0), rect)
+        pygame.draw.rect(screen, (255, 100, 0), (rect.x, rect.y, rect.width, 5))
+        # Patrón para indicar movimiento
+        for i in range(rect.x, rect.x + rect.width, 15):
+            pygame.draw.line(screen, (200, 100, 0), (i, rect.y), (i, rect.y + rect.height), 1)
 
 class Barrel:
     """Clase para los barriles enemigos"""
-    def __init__(self, x, y):
+    def __init__(self, x, y, speed_multiplier=1.0):
         self.x = x
         self.y = y
         self.width = 20
         self.height = 20
-        self.speed_x = random.choice([-2, 2])  # Dirección inicial aleatoria
+        base_speed = 2
+        self.speed_x = random.choice([-base_speed, base_speed]) * speed_multiplier  # Dirección inicial aleatoria
         self.speed_y = 0
         self.gravity = 0.5
         self.on_platform = False
@@ -31,6 +85,7 @@ class Barrel:
         self.animation_timer = 0
         self.last_platform_y = y  # Para detectar cuando cae un nivel
         self.fall_threshold = 50   # Mínima altura de caída para cambiar dirección
+        self.speed_multiplier = speed_multiplier
 
     def update(self, platforms):
         """Actualiza el movimiento del barril"""
@@ -60,7 +115,8 @@ class Barrel:
                     
                     # Si ha caído al menos el threshold, cambiar dirección aleatoriamente
                     if fall_distance >= self.fall_threshold:
-                        self.speed_x = random.choice([-2, 2])
+                        base_speed = 2
+                        self.speed_x = random.choice([-base_speed, base_speed]) * self.speed_multiplier
                         self.last_platform_y = self.y  # Actualizar última posición de plataforma
                     
                     break
@@ -240,14 +296,19 @@ class GameManager:
         self.barrels = []
         self.power_ups = []
         self.platforms = []
+        self.moving_platforms = []  # Plataformas móviles
         self.ladders = []
         self.crown = None  # Corona para completar el nivel
         
         # Configuración del juego
         self.barrel_spawn_timer = 0
         self.barrel_spawn_rate = 180  # Frames entre spawns
+        self.barrel_speed_multiplier = 1.0  # Multiplicador de velocidad de barriles
         self.level = 1
         self.score = 0
+        
+        # Cargar configuración de niveles
+        self.levels_config = self.load_levels_config()
         
         # Sistema de spawn de power-ups aleatorios
         self.hammer_spawn_timer = 0
@@ -345,58 +406,63 @@ class DemoPlayer:
         return keys
 
 # Agregar las funciones que faltan a GameManager
+def load_levels_config(self):
+    """Carga la configuración de niveles desde el archivo JSON"""
+    try:
+        with open('levels_config.json', 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print("Error: No se encontró el archivo levels_config.json")
+        return {}
+
 def initialize_level(self):
-    """Inicializa el mapa del nivel actual"""
+    """Inicializa el mapa del nivel actual desde la configuración JSON"""
     self.platforms.clear()
+    self.moving_platforms.clear()
     self.ladders.clear()
     self.power_ups.clear()
     self.barrels.clear()
     
-    # Crear plataformas del nivel 1 (estilo Donkey Kong clásico)
-    self.platforms = [
-        # Suelo principal
-        pygame.Rect(0, self.screen_height - 50, self.screen_width, 50),
-        
-        # Primer nivel
-        pygame.Rect(50, self.screen_height - 150, 300, 20),
-        pygame.Rect(450, self.screen_height - 150, 300, 20),
-        
-        # Segundo nivel
-        pygame.Rect(100, self.screen_height - 250, 250, 20),
-        pygame.Rect(500, self.screen_height - 250, 250, 20),
-        
-        # Tercer nivel
-        pygame.Rect(150, self.screen_height - 350, 200, 20),
-        pygame.Rect(550, self.screen_height - 350, 200, 20),
-        
-        # Nivel superior (donde está Donkey Kong)
-        pygame.Rect(200, self.screen_height - 450, 400, 20),
-        
-        # Plataforma de la corona (arriba de Donkey Kong)
-        pygame.Rect(350, self.screen_height - 550, 100, 20),
-    ]
+    # Obtener configuración del nivel actual
+    level_key = f"level_{min(self.level, 5)}"  # Máximo 5 niveles
+    if level_key not in self.levels_config:
+        print(f"Error: No se encontró configuración para {level_key}")
+        return
     
-    # Crear escaleras (rediseñadas para mejor navegación)
-    self.ladders = [
-        # Escaleras del suelo al primer nivel (izquierda y derecha)
-        pygame.Rect(150, self.screen_height - 150, 20, 100),  # Izquierda
-        pygame.Rect(650, self.screen_height - 150, 20, 100),  # Derecha
+    level_data = self.levels_config[level_key]
+    
+    # Actualizar configuración de barriles según el nivel
+    self.barrel_spawn_rate = level_data.get("barrel_spawn_rate", 180)
+    self.barrel_speed_multiplier = level_data.get("barrel_speed_multiplier", 1.0)
+    
+    # Crear plataformas desde la configuración
+    for platform_data in level_data.get("platforms", []):
+        x = platform_data["x"]
+        y = self.screen_height + platform_data["y"]  # y es negativo en JSON
+        width = platform_data["width"]
+        height = platform_data["height"]
+        platform_type = platform_data.get("type", "static")
         
-        # Escaleras del primer al segundo nivel
-        pygame.Rect(200, self.screen_height - 250, 20, 100),  # Izquierda
-        pygame.Rect(600, self.screen_height - 250, 20, 100),  # Derecha
-        
-        # Escaleras del segundo al tercer nivel
-        pygame.Rect(250, self.screen_height - 350, 20, 100),  # Izquierda
-        pygame.Rect(650, self.screen_height - 350, 20, 100),  # Derecha
-        
-        # Escaleras del tercer nivel a la plataforma de Donkey Kong
-        pygame.Rect(300, self.screen_height - 450, 20, 100),  # Izquierda
-        pygame.Rect(500, self.screen_height - 450, 20, 100),  # Derecha
-        
-        # Escalera final a la plataforma de la corona (centro)
-        pygame.Rect(400, self.screen_height - 550, 20, 100),
-    ]
+        if platform_type == "static":
+            self.platforms.append(pygame.Rect(x, y, width, height))
+        elif platform_type == "moving_horizontal":
+            move_range = platform_data.get("move_range", 100)
+            move_speed = platform_data.get("move_speed", 1.0)
+            moving_platform = MovingPlatform(x, y, width, height, "horizontal", move_range, move_speed)
+            self.moving_platforms.append(moving_platform)
+        elif platform_type == "moving_vertical":
+            move_range = platform_data.get("move_range", 50)
+            move_speed = platform_data.get("move_speed", 1.0)
+            moving_platform = MovingPlatform(x, y, width, height, "vertical", move_range, move_speed)
+            self.moving_platforms.append(moving_platform)
+    
+    # Crear escaleras desde la configuración
+    for ladder_data in level_data.get("ladders", []):
+        x = ladder_data["x"]
+        y = self.screen_height + ladder_data["y"]  # y es negativo en JSON
+        width = ladder_data["width"]
+        height = ladder_data["height"]
+        self.ladders.append(pygame.Rect(x, y, width, height))
     
     # Colocar power-ups estratégicamente
     self.power_ups = [
@@ -428,10 +494,10 @@ def play_sound(self, sound_name):
         self.sounds[sound_name].play()
 
 def spawn_barrel(self):
-    """Genera un nuevo barril"""
+    """Genera un nuevo barril con velocidad según el nivel"""
     spawn_x = random.randint(200, 600)
     spawn_y = self.screen_height - 480
-    barrel = Barrel(spawn_x, spawn_y)
+    barrel = Barrel(spawn_x, spawn_y, self.barrel_speed_multiplier)
     self.barrels.append(barrel)
 
 def spawn_random_powerup(self, powerup_type):
@@ -488,6 +554,10 @@ def update(self, player):
             self.barrels.remove(barrel)
             self.barrels_dodged += 1
 
+    # Actualizar plataformas móviles
+    for moving_platform in self.moving_platforms:
+        moving_platform.update()
+    
     # Actualizar power-ups
     for power_up in self.power_ups:
         if not power_up.collected:
@@ -543,12 +613,16 @@ def check_collisions(self, player):
 
 def draw(self, screen):
     """Dibuja todos los elementos del mapa"""
-    # Dibujar plataformas
+    # Dibujar plataformas estáticas
     for platform in self.platforms:
         pygame.draw.rect(screen, (0, 100, 255), platform)
         pygame.draw.rect(screen, (0, 80, 200), (platform.x, platform.y, platform.width, 5))
         for i in range(platform.x, platform.x + platform.width, 20):
             pygame.draw.line(screen, (0, 60, 150), (i, platform.y), (i, platform.y + platform.height), 1)
+    
+    # Dibujar plataformas móviles
+    for moving_platform in self.moving_platforms:
+        moving_platform.draw(screen)
 
     # Dibujar escaleras
     for ladder in self.ladders:
@@ -587,8 +661,16 @@ def draw_donkey_kong(self, screen):
     pygame.draw.rect(screen, (139, 69, 19), (dk_x + 55, dk_y + 25, 15, 25))
 
 def get_platforms(self):
-    """Retorna las plataformas para el sistema de colisiones"""
-    return self.platforms
+    """Retorna las plataformas para el sistema de colisiones (estáticas y móviles)"""
+    # Combinar plataformas estáticas y móviles
+    all_platforms = self.platforms.copy()
+    for moving_platform in self.moving_platforms:
+        all_platforms.append(moving_platform.get_rect())
+    return all_platforms
+
+def get_moving_platforms(self):
+    """Retorna las plataformas móviles"""
+    return self.moving_platforms
 
 def get_ladders(self):
     """Retorna las escaleras para el sistema de colisiones"""
@@ -695,6 +777,7 @@ def reset_game(self):
     self.initialize_level()
 
 # Agregar todas las funciones como métodos de GameManager
+GameManager.load_levels_config = load_levels_config
 GameManager.initialize_level = initialize_level
 GameManager.load_sounds = load_sounds
 GameManager.play_sound = play_sound
@@ -705,6 +788,7 @@ GameManager.check_collisions = check_collisions
 GameManager.draw = draw
 GameManager.draw_donkey_kong = draw_donkey_kong
 GameManager.get_platforms = get_platforms
+GameManager.get_moving_platforms = get_moving_platforms
 GameManager.get_ladders = get_ladders
 GameManager.get_score = get_score
 GameManager.draw_hearts = draw_hearts

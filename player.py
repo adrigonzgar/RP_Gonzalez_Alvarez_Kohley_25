@@ -72,7 +72,7 @@ class Player:
             'outline': (0, 0, 0)     # Negro
         }
 
-    def update(self, keys_pressed, platforms, ladders, dt):
+    def update(self, keys_pressed, platforms, ladders, dt, moving_platforms=None):
         """
         Actualiza el estado del jugador cada frame
         
@@ -81,6 +81,7 @@ class Player:
             platforms: Lista de plataformas para colisiones
             ladders: Lista de escaleras
             dt: Delta time (tiempo entre frames)
+            moving_platforms: Lista de plataformas móviles (opcional)
         """
         # Resetear estados
         self.is_moving = False
@@ -96,7 +97,7 @@ class Player:
         self._handle_wrap_around()
         
         # Verificar colisiones
-        self._check_collisions(platforms, ladders)
+        self._check_collisions(platforms, ladders, moving_platforms)
         
         # Actualizar animación
         self._update_animation()
@@ -148,7 +149,7 @@ class Player:
         self.x += self.vel_x
         self.y += self.vel_y
 
-    def _check_collisions(self, platforms, ladders):
+    def _check_collisions(self, platforms, ladders, moving_platforms=None):
         """Verifica colisiones con plataformas y escaleras"""
         # Crear rectángulo del jugador
         player_rect = pygame.Rect(self.x, self.y, self.width, self.height)
@@ -162,14 +163,47 @@ class Player:
         
         # Verificar plataformas
         self.on_ground = False
-        for platform in platforms:
-            if player_rect.colliderect(platform):
-                # Colisión desde arriba (aterrizar en plataforma)
-                if self.vel_y > 0 and self.y < platform.top:
-                    self.y = platform.top - self.height
-                    self.vel_y = 0
-                    self.on_ground = True
-                    self.is_jumping = False
+        
+        # Primero verificar plataformas móviles
+        if moving_platforms:
+            for moving_platform in moving_platforms:
+                platform_rect = moving_platform.get_rect()
+                
+                # Verificar colisión horizontal (si el jugador está encima horizontalmente)
+                horizontal_overlap = (self.x + self.width > platform_rect.left + 2 and 
+                                     self.x < platform_rect.right - 2)
+                
+                if horizontal_overlap:
+                    player_bottom = self.y + self.height
+                    platform_top = platform_rect.top
+                    
+                    # Verificar si está sobre la plataforma (con margen generoso)
+                    if self.vel_y >= 0 and player_bottom >= platform_top - 5 and player_bottom <= platform_top + 15:
+                        # Posicionar firmemente sobre la plataforma
+                        self.y = platform_rect.top - self.height
+                        self.vel_y = 0
+                        self.on_ground = True
+                        self.is_jumping = False
+                        
+                        # Mover al jugador con la plataforma
+                        if moving_platform.move_type == "horizontal":
+                            self.x += moving_platform.move_speed * moving_platform.direction
+                        elif moving_platform.move_type == "vertical":
+                            # Para plataformas verticales, mantener pegado
+                            self.y = platform_rect.top - self.height
+                        break
+        
+        # Luego verificar plataformas estáticas solo si no está en una móvil
+        if not self.on_ground:
+            for platform in platforms:
+                if player_rect.colliderect(platform):
+                    # Colisión desde arriba (aterrizar en plataforma)
+                    if self.vel_y > 0 and self.y < platform.top:
+                        self.y = platform.top - self.height
+                        self.vel_y = 0
+                        self.on_ground = True
+                        self.is_jumping = False
+                        break
 
     def _update_animation(self):
         """Actualiza la animación del sprite"""

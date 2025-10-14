@@ -132,6 +132,11 @@ def draw_overlay_texts(screen, frame_count):
     cursor_y = press_key_y + 5
     draw_blinking_cursor(screen, cursor_x, cursor_y, frame_count)
     
+    # Instrucciones adicionales
+    fullscreen_text = font_tiny.render("Press F11 for fullscreen | Press L for level selector", True, WHITE)
+    fullscreen_rect = fullscreen_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50))
+    screen.blit(fullscreen_text, fullscreen_rect)
+    
     # Puntuación alta en esquina superior derecha
     high_score_text = font_small.render("HI-SCORE", True, RED)
     screen.blit(high_score_text, (SCREEN_WIDTH - 150, 20))
@@ -242,6 +247,8 @@ def welcome_screen(screen, clock):
                     pygame.display.flip()
                     pygame.time.wait(100)  # Breve pausa para el efecto
                     return "play"  # Señal para juego normal
+                elif event.key == pygame.K_l:
+                    return "level_select"  # Señal para selector de niveles
     
     return "play"  # Por defecto
 
